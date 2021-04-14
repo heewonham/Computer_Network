@@ -8,6 +8,7 @@
 #include <netinet/in.h> 
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
+#incldue <ctype.h>
 
 #define MAXDATASIZE 1000 
 
@@ -34,7 +35,14 @@ int main(int argc, char *argv[])
  	int rv; 							// funtional return value
  	char s[INET_ADDRSTRLEN]; 			// ip, address 받기
  	
-	
+	// 받은 메세지를 위한 변수
+	int header = 0;
+	int contentLength = -1;
+	FILE* fwp = fopen("[20172067].out", "w");;
+	char *statuscode;
+	char status[MAXDATASIZE] = {'\0'};
+	char content[MAXDATASIZE] = {'\0'};
+	 
 	// http:// 부분 있는지 확인 
 	for(i = 0; i < strlen(argv[1]); i++){
 		if(i < 7 && arg[1][i] != tmp[i]){
@@ -93,11 +101,7 @@ int main(int argc, char *argv[])
 	freeaddrinfo(servinfo); 
 
 	// HTTP request message 만들기
-	sscanf(tmpbuf, "GET %s HTTP/1.1\r\n",path);
-	strcpy(buf,tmpbuf);
-	sscanf(tmpbuf, "Host: %s:%s\r\n",hostname,port);
-	strcat(buf,tmpbuf);
-	strcat(buf,"\r\n\r\n");
+ 	sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s:%s\r\n\r\n",path,hostname,port);
 
  	// send message  (non-blocking function)
 	if(send(sockfd, buf, strlen(buf), 0) == -1) { 
@@ -107,14 +111,69 @@ int main(int argc, char *argv[])
  	}
 
 	/*  receive message (blocking function) */
-	if((numbytes = recv(sockfd, buf, sizeof buf, 0)) == -1) { 
- 		perror("recv"); ./
+	while((numbytes = recv(sockfd, buf, sizeof buf, 0)) != -1){
+		buf[numbytes] = '\0';
+		if(header == 0){
+			header = 1;
+			statuscode = strtok(buf,"\r\n");
+			strcpy(status,statuscode);
+			tmpP = strtok(buf,"");
+			fprintf(fwp, "%s", tmpP);
+		}
+		else{
+			fprintf(fwp,"%s",buf);
+			tmpP = strtok(buf,"\r\n");
+			while(tmpP != NULL){
+				strcpy(content,tmpP);
+				tmpP = NULL;
+				tmpP = strtok(NULL,"\r\n");
+				if(contentLength == -1){
+					contentLength = findContentlength(content);
+				}	
+				memset(content,'\0',1000);
+			}
+		}
+	}
+	
+	
+	/*if((numbytes = recv(sockfd, buf, sizeof buf, 0)) == -1) { 
+ 		perror("recv"); 
  		close(sockfd); 
 		exit(1); }
-	buf[numbytes] = '\0';
-	// 메세지가 올때 null문자가 와서 오지 않기 때문에 null 문자를 끝에 붙인다.
- 	printf("client: received '%s'\n", buf); 
+	buf[numbytes] = '\0';*/
 
+	
+	// 결과 출력 
+	printf("%s\n", status); 
+	if(contentLength == -1){
+		printf("Content-Length not specified.\n");
+		remove("[20172067].out");
+	}
+	else{
+		printf("%d bytes written to 20172067.out\n",contentLength);
+	}
+
+	fclose(fwp);
  	close(sockfd); 
 	return 0; 
+}
+int findContentlength(char* content){
+	
+	int i, j = 0;
+	char parsing[] = "content-length";
+	char tmp[40] = {'\0',};
+
+	for(i = 0; i < strlen(content); i++){
+		if(i < strlen(parsing) && (tolower(content[i]) != parsing[i])){
+			return -1;
+		}
+		if(i >= strlen(parsing)){
+			if(content[i] != ':' && content[i] != ' '){
+				tmp[j++] = content[i];
+			}
+		}
+
+	}
+
+	return strtol(tmp,NULL,10)
 }
