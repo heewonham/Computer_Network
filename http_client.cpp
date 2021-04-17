@@ -8,9 +8,10 @@
 #include <netinet/in.h> 
 #include <sys/socket.h> 
 #include <arpa/inet.h> 
-#incldue <ctype.h>
+#include <ctype.h>
 
 #define MAXDATASIZE 1000 
+int findContentlength(char* content);
 
 int main(int argc, char *argv[]) 
 {
@@ -30,22 +31,29 @@ int main(int argc, char *argv[])
 	int sockfd; 						// socket을 지칭하는 번호 
 	int numbytes; 
  	char buf[MAXDATASIZE];
- 	char tmpbuf[MAXDATASIZE]; 
+	char tmpbuf[MAXDATASIZE];
  	struct addrinfo hints, *servinfo; 	// socket의 ip, port 담고있는 구조체 
  	int rv; 							// funtional return value
  	char s[INET_ADDRSTRLEN]; 			// ip, address 받기
- 	
+
 	// 받은 메세지를 위한 변수
-	int header = 0;
+	int byte = 0;
 	int contentLength = -1;
-	FILE* fwp = fopen("[20172067].out", "w");;
-	char *statuscode;
+	FILE* fwp = fopen("20172067.out", "w");;
+	char *statuscode = NULL;
 	char status[MAXDATASIZE] = {'\0'};
-	char content[MAXDATASIZE] = {'\0'};
-	 
+	char content[MAXDATASIZE] = {'\0'}; 	
+
+        // 입력받은 인수가 정상이 아니라면 프로그램을 종료한다.
+        if(argc != 2) {
+                fprintf(stderr, "usage: http_client http://hostname[:port][/path/to/file]\n");
+                exit(1);
+        }
+	
+
 	// http:// 부분 있는지 확인 
 	for(i = 0; i < strlen(argv[1]); i++){
-		if(i < 7 && arg[1][i] != tmp[i]){
+		if(i < 7 && argv[1][i] != tmp[i]){
  			fprintf(stderr, "usage: http_client http://hostname[:port][/path/to/file]\n"); 
  			exit(1);
 		}
@@ -65,12 +73,7 @@ int main(int argc, char *argv[])
 	if(port == NULL){
 		port = tmpPort;
 	}
-	
-	// 입력받은 인수가 정상이 아니라면 프로그램을 종료한다. 
- 	if(argc != 2) { 
- 		fprintf(stderr, "usage: http_client http://hostname[:port][/path/to/file]\n"); 
- 		exit(1); 
- 	}	 
+		 
 
  	memset(&hints, 0, sizeof hints); 	// 0으로 초기화
  	hints.ai_family = AF_UNSPEC;    	// ipv4 , ipv6, unspecified
@@ -101,48 +104,55 @@ int main(int argc, char *argv[])
 	freeaddrinfo(servinfo); 
 
 	// HTTP request message 만들기
- 	sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s:%s\r\n\r\n",path,hostname,port);
+	sprintf(buf, "GET %s HTTP/1.1\r\nHost: %s:%s\r\n\r\n",path,hostname,port);
 
  	// send message  (non-blocking function)
-	if(send(sockfd, buf, strlen(buf), 0) == -1) { 
+	if(send(sockfd,buf, strlen(buf), 0) == -1) { 
  		perror("send"); 
  		close(sockfd); // socket 닫기 
  		exit(1); 
  	}
 
 	/*  receive message (blocking function) */
-	while((numbytes = recv(sockfd, buf, sizeof buf, 0)) != -1){
-		buf[numbytes] = '\0';
-		if(header == 0){
-			header = 1;
-			statuscode = strtok(buf,"\r\n");
-			strcpy(status,statuscode);
-			tmpP = strtok(buf,"");
-			fprintf(fwp, "%s", tmpP);
-		}
-		else{
-			fprintf(fwp,"%s",buf);
-			tmpP = strtok(buf,"\r\n");
-			while(tmpP != NULL){
-				strcpy(content,tmpP);
-				tmpP = NULL;
-				tmpP = strtok(NULL,"\r\n");
-				if(contentLength == -1){
-					contentLength = findContentlength(content);
-				}	
-				memset(content,'\0',1000);
-			}
-		}
+	if((numbytes = recv(sockfd, buf, sizeof buf, 0)) == -1){
+		perror("recv"); 
+		close(sockfd); 
+		exit(1); 
 	}
 	
+	buf[numbytes] = '\0';
+	strcpy(tmpbuf,buf);
 	
-	/*if((numbytes = recv(sockfd, buf, sizeof buf, 0)) == -1) { 
- 		perror("recv"); 
- 		close(sockfd); 
-		exit(1); }
-	buf[numbytes] = '\0';*/
+	// statsu code parsing 
+	statuscode = strtok(tmpbuf,"\r\n");
+   	strcpy(status,statuscode);
+	
+	// data 부분 parsing 
+	tmpP = strtok(buf,"");
+	tmpHost = strstr(tmpP,"\r\n\r\n");
+	fprintf(fwp,"%s",tmpHost+4);
+	byte = strlen(tmpHost+4);
+	
+	// content- length 찾기 
+	tmpP = strtok(buf,"\r\n");
+    	while(tmpP != NULL){
+        	strcpy(content,tmpP);
+        	tmpP = NULL;
+        	tmpP = strtok(NULL,"\r\n");
+        	if(contentLength == -1){
+           	 contentLength = findContentlength(content);
+        	}
+        	memset(content,'\0',1000);
+	}
+	
+	while(contentLength != -1 && contentLength > byte)	{
+		numbytes = recv(sockfd, buf, sizeof buf, 0);
+		buf[numbytes] = '\0';
+		byte += numbytes;
+		fprintf(fwp,"%s",buf);
+	}	
 
-	
+
 	// 결과 출력 
 	printf("%s\n", status); 
 	if(contentLength == -1){
@@ -162,9 +172,9 @@ int findContentlength(char* content){
 	int i, j = 0;
 	char parsing[] = "content-length";
 	char tmp[40] = {'\0',};
-
+	
 	for(i = 0; i < strlen(content); i++){
-		if(i < strlen(parsing) && (tolower(content[i]) != parsing[i])){
+		if(i < strlen(parsing) && tolower(content[i]) != parsing[i]){
 			return -1;
 		}
 		if(i >= strlen(parsing)){
@@ -175,5 +185,6 @@ int findContentlength(char* content){
 
 	}
 
-	return strtol(tmp,NULL,10)
+	return strtol(tmp,NULL,10);
 }
+
