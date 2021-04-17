@@ -13,4 +13,8 @@
 * client도 select를 활용하여 정해진 대로 수행하는 것이 아닌, 자유롭게 서버에게 정보가 오면  받고, 서버에게 정보를 보내는 작업이 가능하게 한다.
 
 
+## Assignment - HTTP client 만들기
+
+* Web browser 와 같은 역할을 하는 HTTP client 프로그램 작성한다.
+* 서버와 TCP 연결하고 HTTP request를 보낸다. HTTP response를 받아서 헤더의 status code를 화면에 출력하고, header 안에 Content-Length를 기억하여 데이터를 학번.out파일에 작성한다.
 
