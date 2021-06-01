@@ -13,46 +13,31 @@ int change(FILE* fwp, char* chgefile, char* mesgfile, int node);
 int table[MAX_NODE][MAX_NODE][2];
 int adj_graph[MAX_NODE][MAX_NODE];
 
-int main(){//int argc, char *argv[]){
+int main(int argc, char *argv[]){
 		
-	char topofile[MAX_STR] = { '\0', };
-	char mesgfile[MAX_STR] = { '\0', };
-	char chgefile[MAX_STR] = { '\0', };
-	char buf[MAX_STR] = { '\0', }; // 삭 제 
-	char *tmp1;
-	
 	int node; 	
 	FILE * fwp = fopen("output_dv.txt","w");
 	
 	// 1. 인자수  
-	scanf("%[^\n]", buf);
-	/*if(argc != 4){
-		fprintf(stderr, "usage: linkstate topologyfile messagesfile changefile\n"); 
+	if(argc != 4){
+		fprintf(stderr, "usage: distvec topologyfile messagesfile changefile\n"); 
  		exit(1); 
-	}*/
+	}
 	
-	// 2. parsing
-	tmp1 = strtok(buf," ");   //tmp1 = strtok(argv[1]," ");
-	strcpy(topofile, tmp1);
-	tmp1 = strtok(NULL, " ");
-	strcpy(mesgfile, tmp1);
-	tmp1 = strtok(NULL, " ");
-	strcpy(chgefile, tmp1);
-	
-	// 3-1. topology open 
-	if(topology(fwp, topofile, &node) == -1)
+	// 2-1. topology open 
+	if(topology(fwp, argv[1], &node) == -1)
 		exit(1);
 
-	//3-2. message
-	if(message(fwp, mesgfile) == -1)
+	// 2-2. message
+	if(message(fwp, argv[2]) == -1)
 		exit(1);
 	
-	// 3-3. changes
-	if(change(fwp, chgefile, mesgfile, node) == -1)
+	// 2-3. changes
+	if(change(fwp, argv[3], argv[2], node) == -1)
 		exit(1);
 	
-	// 4. finish
-	printf("Complete. Output file written to ouput_ls.txt."); 
+	// 3. finish
+	printf("Complete. Output file written to ouput_dv.txt.\n"); 
 	
 }
 
@@ -87,7 +72,8 @@ int topology(FILE *fwp, char* topofile, int *node) {
 			}
 		}
 	}
-			
+	
+	// file read		
 	while(fgets(buf, MAX_STR, fp)){
 		sscanf(buf, "%d %d %d", &n1, &n2, &cost);
 		if(cost == -999) cost = 999;
@@ -95,10 +81,12 @@ int topology(FILE *fwp, char* topofile, int *node) {
 		adj_graph[n2][n1] = cost;
 	}
 	
+	//distance vector algorithm 
 	while(count != 0){
 		count = distance(*node);
 	}
-
+	
+	// 파일쓰기
 	for(i =0; i < *node; i++){
 		for(j = 0; j < *node; j++){
 			if(table[i][j][1] != 999)
@@ -118,6 +106,7 @@ int distance(int node) {
 	for(i = 0; i < node; i++){
 		for(j = 0; j < node; j++){
 			for(k = 0; k < node; k++){
+				// 값이 같을 경우, 이웃 노드 중 더 작은 노드를 선택
 				if((table[i][j][1] > (adj_graph[i][k] + table[k][j][1]))
 				||(i != k && table[i][j][1] == (adj_graph[i][k] + table[k][j][1]) && table[i][j][0] > k)){
 					table[i][j][1] = adj_graph[i][k] + table[k][j][1]; 
@@ -217,3 +206,4 @@ int change(FILE* fwp, char* chgefile, char* mesgfile, int node) {
 	fclose(fp);
 	return 0;
 }
+
