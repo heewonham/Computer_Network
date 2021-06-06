@@ -7,32 +7,22 @@
 
 int main(){//int argc, char *argv[]){
 		
-	int i, bi, num;
-	char input[MAX_STR], output[MAX_STR];
-	char buf;
-	int generator, dataword_size;
+	int i, j;
+	int count, tmp, bitsize;
+	char input[MAX_STR], output[MAX_STR], generator[8], buf[MAX_STR];
+	int dataword;
 	int result[20];
 	FILE *fwp, *fp;
 	
-	scanf("%s %s %d %d", input, output, &generator, &dataword_size);
-	fp = fopen(input, "rb");
-	
-	while(fread(&buf, 1, 1, fp)){
-		
-		num = buf[i]-'0';
-		for(i = 7; i >= 0; --i){
-			result[7-i] = num >> i & 1;
-		}
-		
-	}
+	scanf("%s %s %s %d", input, output, generator, &dataword);
 	
 	/* 1. ÀÎÀÚ¼ö  
 	if(argc != 4){
 		fprintf(stderr, "usage: ./crc_encoder input_file output_file generator dataword_size\n"); 
  		exit(1); 
-	}
+	}*/
 	
-	fp = fopen(input, "r");
+	fp = fopen(input, "rb");
 	if (fp == NULL) {
 		printf("input file open error.\n");
 		return -1;
@@ -47,6 +37,24 @@ int main(){//int argc, char *argv[]){
 	if (dataword_size != 4 && dataword_size != 8){
 		printf("dataword size must be 4 or 8./n");
 		return -1;
-	*/
-}
-void 
+	
+	// 1. main
+	while(fread(&buf, sizeof(char), MAX_STR, fp)){
+		
+		count = (strlen(buf) * 8) / datasize;
+		tmp = (datasize + strlen(generator) -1) * count;
+		bitsize = tmp + (8 - (tmp % 8));
+		fwrite(buf,sizeof(int),8, fwp);
+		for(i = 0; i < strlen(buf); i++){
+					//num = buf-'0';
+		//for(i = 7; i >= 0; --i){
+		//	result[7-i] = num >> i & 1;
+		//}
+		}
+
+		//for(i = 0; i < 8; i++){
+		//	printf("%d ",result[i]);
+		//}
+	}
+} 
+// 1. 
